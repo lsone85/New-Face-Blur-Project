@@ -137,6 +137,10 @@ cython_debug/
 
 # PyCharm
 .idea/
+# But keep important project configuration
+!.idea/misc.xml
+!.idea/modules.xml
+!.idea/New-Face-Blur-Project.iml
 
 # Application specific
 output/
