@@ -1,0 +1,5 @@
+PyQt5
+deepface==0.0.87
+opencv-python
+numpy
+Pillow
