@@ -12,7 +12,18 @@ def get_face_embeddings():
     for img_file in os.listdir(WHITELIST_DIR):
         img_path = os.path.join(WHITELIST_DIR, img_file)
         try:
-            embedding = DeepFace.represent(img_path=img_path, model_name="VGG-Face")[0]["embedding"]
+            # Ensure image is loaded as RGB uint8 array if not a path
+            if isinstance(img_path, str):
+                print(f"[DEBUG] DeepFace.represent input: path={img_path}")
+                embedding = DeepFace.represent(img_path=img_path, model_name="VGG-Face")[0]["embedding"]
+            else:
+                img = img_path
+                print(f"[DEBUG] DeepFace.represent input: type={type(img)}, shape={getattr(img, 'shape', None)}, dtype={getattr(img, 'dtype', None)}")
+                if len(img.shape) == 3 and img.shape[2] == 3:
+                    if img.dtype != np.uint8:
+                        img = img.astype(np.uint8)
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                embedding = DeepFace.represent(img_path=img, model_name="VGG-Face")[0]["embedding"]
             embeddings.append((img_file, embedding))
         except Exception as e:
             print(f"Failed to process {img_file}: {e}")
@@ -21,11 +32,14 @@ def get_face_embeddings():
 def is_face_whitelisted(face_img, whitelist_embeddings, threshold=0.5):
     """Check if detected face matches any in the whitelist."""
     try:
-        # Convert OpenCV image (BGR) to RGB for DeepFace
+        # Ensure image is RGB, shape (h, w, 3), dtype uint8
+        face_img_rgb = face_img
+        print(f"[DEBUG] is_face_whitelisted input: type={type(face_img)}, shape={getattr(face_img, 'shape', None)}, dtype={getattr(face_img, 'dtype', None)}")
         if len(face_img.shape) == 3 and face_img.shape[2] == 3:
-            face_img_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
-        else:
-            face_img_rgb = face_img
+            if face_img.dtype != np.uint8:
+                face_img_rgb = face_img.astype(np.uint8)
+            face_img_rgb = cv2.cvtColor(face_img_rgb, cv2.COLOR_BGR2RGB)
+        print(f"[DEBUG] DeepFace.represent input (whitelist): type={type(face_img_rgb)}, shape={getattr(face_img_rgb, 'shape', None)}, dtype={getattr(face_img_rgb, 'dtype', None)}")
         face_embedding = DeepFace.represent(img_path=face_img_rgb, model_name="VGG-Face")[0]["embedding"]
     except Exception:
         return False
@@ -36,6 +50,7 @@ def is_face_whitelisted(face_img, whitelist_embeddings, threshold=0.5):
     return False
 
 def process_video(input_path, output_path, progress_callback=None, log_callback=None):
+    print("[DEBUG] process_video called", flush=True)
     whitelist_embeddings = get_face_embeddings()
     if not whitelist_embeddings:
         if log_callback: log_callback("Whitelist is empty. Add faces to the whitelist.")
@@ -56,7 +71,15 @@ def process_video(input_path, output_path, progress_callback=None, log_callback=
         if not ret:
             break
         try:
-            faces = DeepFace.extract_faces(img_path=frame, detector_backend="opencv", enforce_detection=False)
+            # Ensure frame is RGB, shape (h, w, 3), dtype uint8
+            frame_rgb = frame
+            print(f"[DEBUG] process_video frame: type={type(frame)}, shape={getattr(frame, 'shape', None)}, dtype={getattr(frame, 'dtype', None)}")
+            if len(frame.shape) == 3 and frame.shape[2] == 3:
+                if frame.dtype != np.uint8:
+                    frame_rgb = frame.astype(np.uint8)
+                frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
+            print(f"[DEBUG] DeepFace.extract_faces input: type={type(frame_rgb)}, shape={getattr(frame_rgb, 'shape', None)}, dtype={getattr(frame_rgb, 'dtype', None)}")
+            faces = DeepFace.extract_faces(img_path=frame_rgb, detector_backend="opencv", enforce_detection=False)
             for face in faces:
                 area = face['facial_area']
                 x, y, w, h = area['x'], area['y'], area['w'], area['h']

@@ -9,6 +9,7 @@ def ensure_output_dir():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def select_video():
+    print("[DEBUG] select_video called", flush=True)
     video_path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4;*.avi")])
     if video_path:
         ensure_output_dir()
